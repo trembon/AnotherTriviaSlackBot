@@ -154,7 +154,7 @@ namespace AnotherTriviaSlackBot.Handler
             {
                 if (!currentQuestion.IsAnswered)
                 {
-                    sendMessage($"*Hint*: {currentQuestion.Question.Hint}");
+                    sendMessage($"*Hint*: {currentQuestion.Question.GenerateHint()}");
                 }
             }
         }

@@ -12,15 +12,16 @@ namespace AnotherTriviaSlackBot.DAL
     {
         private static readonly Logger log = LogManager.GetLogger("TriviaDB");
 
-        private static object dbLock = new object();
+        private static object dbQuestionLock = new object();
+        private static object dbDataLock = new object();
 
         public static List<Question> GetRandomQuestions(int amount)
         {
             try
             {
-                lock (dbLock)
+                lock (dbQuestionLock)
                 {
-                    using (var context = new TriviaDBContext())
+                    using (var context = new QuestionDBContext())
                     {
                         return context.Database.SqlQuery<Question>($"SELECT * FROM questions ORDER BY RANDOM() LIMIT {amount}").ToList();
                     }
@@ -40,9 +41,9 @@ namespace AnotherTriviaSlackBot.DAL
 
             try
             {
-                lock (dbLock)
+                lock (dbDataLock)
                 {
-                    using (var context = new TriviaDBContext())
+                    using (var context = new DataDBContext())
                     {
                         var users = context.UserStats.ToList();
                         foreach (var scoredUser in latestAddition)
@@ -70,9 +71,9 @@ namespace AnotherTriviaSlackBot.DAL
         {
             try
             {
-                lock (dbLock)
+                lock (dbDataLock)
                 {
-                    using (var context = new TriviaDBContext())
+                    using (var context = new DataDBContext())
                     {
                         return context
                             .UserStats

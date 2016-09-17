@@ -1,7 +1,7 @@
 # AnotherTriviaSlackBot
 Just another trivia slack bot, inspired the classic trivia bot from IRC
 
-Can be installed as a Windows service with the [InstallUtil](https://msdn.microsoft.com/en-us/library/sd8zc8ha(v=vs.110).aspx) command.
+Can be installed as a Windows service with the [InstallUtil](https://msdn.microsoft.com/en-us/library/sd8zc8ha(v=vs.110).aspx) command or just start the application and select the install choice.
 
 ###Example configuration (settings.json)
 ```
