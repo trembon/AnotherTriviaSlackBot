@@ -93,6 +93,7 @@
     <Compile Include="DAL\TriviaDB.cs" />
     <Compile Include="DAL\QuestionDBContext.cs" />
     <Compile Include="DAL\DataDBContext.cs" />
+    <Compile Include="Entities\BadQuestion.cs" />
     <Compile Include="Entities\CurrentTriviaQuestion.cs" />
     <Compile Include="Entities\Question.cs" />
     <Compile Include="Entities\UserStats.cs" />

@@ -15,6 +15,11 @@ namespace AnotherTriviaSlackBot.Handler
 
         public bool IsActive { get; set; }
 
+        public int CurrentQuestionCount
+        {
+            get { return currentQuestion + 1; }
+        }
+
         private Action<string> sendMessage;
 
         public TriviaHandler(MainConfiguration configuration, Action<string> sendMessage)
@@ -125,6 +130,11 @@ namespace AnotherTriviaSlackBot.Handler
                     Task.Delay(1000).ContinueWith(x => ShowQuestion());
                 }
             }
+        }
+
+        public string GetQuestionIDByNumber(int number)
+        {
+            return questions[number - 1].Question.ID;
         }
 
         private void ShowAnswer(CurrentTriviaQuestion currentQuestion)

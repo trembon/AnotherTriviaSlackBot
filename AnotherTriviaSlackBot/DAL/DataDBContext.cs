@@ -16,6 +16,8 @@ namespace AnotherTriviaSlackBot.DAL
     {
         public DbSet<UserStats> UserStats { get; set; }
 
+        public DbSet<BadQuestion> BadQuestions { get; set; }
+
         protected override void OnModelCreating(DbModelBuilder modelBuilder)
         {
             SQLiteConnectionStringBuilder builder = new SQLiteConnectionStringBuilder(this.Database.Connection.ConnectionString);
@@ -49,6 +51,13 @@ namespace AnotherTriviaSlackBot.DAL
                 if (cmd.ExecuteScalar() == null)
                 {
                     cmd.CommandText = "create table stats(user_id nvarchar, score int)";
+                    cmd.ExecuteNonQuery();
+                }
+
+                cmd.CommandText = "SELECT name FROM sqlite_master WHERE type='table' AND name='bad_questions'";
+                if (cmd.ExecuteScalar() == null)
+                {
+                    cmd.CommandText = "create table bad_questions(questions_id nvarchar, user_id nvarchar)";
                     cmd.ExecuteNonQuery();
                 }
             }

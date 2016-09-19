@@ -26,7 +26,7 @@ namespace AnotherTriviaSlackBot
             configuration = MainConfiguration.Load();
 
             triviaHandler = new TriviaHandler(configuration, SendMessage);
-            messageHandler = new MessageHandler(triviaHandler);
+            messageHandler = new MessageHandler(triviaHandler, SendMessage);
 
             client = new SlackSocketClient(configuration.SlackAuthToken);
             client.OnMessageReceived += Client_OnMessageReceived;

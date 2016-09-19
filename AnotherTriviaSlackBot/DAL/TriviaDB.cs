@@ -19,11 +19,20 @@ namespace AnotherTriviaSlackBot.DAL
         {
             try
             {
+                List<string> badQuestionIds = new List<string>(0);
+                lock (dbDataLock)
+                {
+                    using(var context = new DataDBContext())
+                    {
+                        badQuestionIds = context.BadQuestions.Select(bq => "'" + bq.QuestionID + "'").ToList();
+                    }
+                }
+
                 lock (dbQuestionLock)
                 {
                     using (var context = new QuestionDBContext())
                     {
-                        return context.Database.SqlQuery<Question>($"SELECT * FROM questions ORDER BY RANDOM() LIMIT {amount}").ToList();
+                        return context.Database.SqlQuery<Question>($"SELECT * FROM questions WHERE id NOT IN ({String.Join(",", badQuestionIds)}) ORDER BY RANDOM() LIMIT {amount}").ToList();
                     }
                 }
             }
@@ -31,6 +40,25 @@ namespace AnotherTriviaSlackBot.DAL
             {
                 log.Error(ex, "Failed to get random questions.");
                 return new List<Question>();
+            }
+        }
+
+        public static int GetQuestionCount()
+        {
+            try
+            {
+                lock (dbQuestionLock)
+                {
+                    using (var context = new QuestionDBContext())
+                    {
+                        return context.Questions.Count();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                log.Error(ex, "Failed to get question count.");
+                return -1;
             }
         }
 
@@ -87,6 +115,26 @@ namespace AnotherTriviaSlackBot.DAL
             {
                 log.Error(ex, "Failed to get top five user stats.");
                 return new List<UserStats>();
+            }
+        }
+
+        public static void SetQuestionAsBad(string questionId, string userId)
+        {
+            try
+            {
+                lock (dbDataLock)
+                {
+                    using (var context = new DataDBContext())
+                    {
+                        var badQuestion = new BadQuestion { QuestionID = questionId, UserID = userId };
+                        context.BadQuestions.Add(badQuestion);
+                        context.SaveChanges();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                log.Error(ex, $"Failed to set question '{questionId}' as bad.");
             }
         }
     }
