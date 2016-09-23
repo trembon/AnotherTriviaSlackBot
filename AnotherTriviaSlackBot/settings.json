@@ -3,5 +3,6 @@
   "ChannelName": "ChannelName",
   "QuestionsPerRound": 10,
   "ShowHintAfterSeconds": 10,
-  "ShowAnswerAfterSeconds": 20
+  "ShowAnswerAfterSeconds": 20,
+  "DefaultCategory": "general"
 }

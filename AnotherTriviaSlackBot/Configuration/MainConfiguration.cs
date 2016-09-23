@@ -19,7 +19,9 @@ namespace AnotherTriviaSlackBot.Configuration
         public int ShowHintAfterSeconds { get; set; }
 
         public int ShowAnswerAfterSeconds { get; set; }
-        
+
+        public string DefaultCategory { get; set; }
+
         public static MainConfiguration Load()
         {
             string configPath = Path.Combine(GetDataDirectory(), "settings.json");

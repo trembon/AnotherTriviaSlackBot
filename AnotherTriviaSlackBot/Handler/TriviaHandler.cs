@@ -28,15 +28,25 @@ namespace AnotherTriviaSlackBot.Handler
             this.sendMessage = sendMessage;
         }
 
-        public void Start()
+        public void Start(string category)
         {
             if (IsActive)
                 return;
-            
-            sendMessage($"A new trivia will start in a moment, just gonna find {configuration.QuestionsPerRound} questions!");
+
+            if (String.IsNullOrWhiteSpace(category))
+                category = configuration.DefaultCategory;
+
+            var categories = TriviaDB.GetCategories();
+            if (!categories.ContainsKey(category))
+            {
+                sendMessage($"Seriously? The category '{category}' doesn't exist, think before you write!");
+                return;
+            }
+
+            sendMessage($"A new trivia for '{category}' will start in a moment, just gonna find {configuration.QuestionsPerRound} questions!");
 
             currentQuestion = -1;
-            questions = TriviaDB.GetRandomQuestions(configuration.QuestionsPerRound).Select(q => new CurrentTriviaQuestion(q)).ToList();
+            questions = TriviaDB.GetRandomQuestions(category, configuration.QuestionsPerRound).Select(q => new CurrentTriviaQuestion(q)).ToList();
 
             Task.Delay(1000).ContinueWith(x => ShowQuestion());
 

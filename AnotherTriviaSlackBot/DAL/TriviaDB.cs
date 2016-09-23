@@ -15,7 +15,7 @@ namespace AnotherTriviaSlackBot.DAL
         private static object dbQuestionLock = new object();
         private static object dbDataLock = new object();
 
-        public static List<Question> GetRandomQuestions(int amount)
+        public static List<Question> GetRandomQuestions(string category, int amount)
         {
             try
             {
@@ -32,7 +32,7 @@ namespace AnotherTriviaSlackBot.DAL
                 {
                     using (var context = new QuestionDBContext())
                     {
-                        return context.Database.SqlQuery<Question>($"SELECT * FROM questions WHERE id NOT IN ({String.Join(",", badQuestionIds)}) ORDER BY RANDOM() LIMIT {amount}").ToList();
+                        return context.Database.SqlQuery<Question>($"SELECT * FROM questions WHERE id NOT IN ({String.Join(",", badQuestionIds)}) AND category = '{category}' ORDER BY RANDOM() LIMIT {amount}").ToList();
                     }
                 }
             }
@@ -43,15 +43,20 @@ namespace AnotherTriviaSlackBot.DAL
             }
         }
 
+        private static int? cacheGetQuestionCount = null;
         public static int GetQuestionCount()
         {
             try
             {
                 lock (dbQuestionLock)
                 {
+                    if (cacheGetQuestionCount != null)
+                        return cacheGetQuestionCount.Value;
+
                     using (var context = new QuestionDBContext())
                     {
-                        return context.Questions.Count();
+                        cacheGetQuestionCount = context.Questions.Count();
+                        return cacheGetQuestionCount.Value;
                     }
                 }
             }
@@ -59,6 +64,30 @@ namespace AnotherTriviaSlackBot.DAL
             {
                 log.Error(ex, "Failed to get question count.");
                 return -1;
+            }
+        }
+
+        private static Dictionary<string, int> cacheGetCategories = null;
+        public static Dictionary<string, int> GetCategories()
+        {
+            try
+            {
+                lock (dbQuestionLock)
+                {
+                    if (cacheGetCategories != null)
+                        return cacheGetCategories;
+
+                    using (var context = new QuestionDBContext())
+                    {
+                        cacheGetCategories = context.Questions.GroupBy(q => q.Category).ToDictionary(k => k.Key, v => v.Count());
+                        return cacheGetCategories;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                log.Error(ex, "Failed to get categories.");
+                return new Dictionary<string, int>();
             }
         }
 

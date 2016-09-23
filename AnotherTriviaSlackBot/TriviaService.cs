@@ -30,6 +30,9 @@ namespace AnotherTriviaSlackBot
 
             client = new SlackSocketClient(configuration.SlackAuthToken);
             client.OnMessageReceived += Client_OnMessageReceived;
+
+            DAL.TriviaDB.GetQuestionCount();
+            DAL.TriviaDB.GetCategories();
         }
 
         private void Client_OnMessageReceived(NewMessage message)

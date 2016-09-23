@@ -23,6 +23,9 @@ namespace AnotherTriviaSlackBot.Entities
         [Column("answer")]
         public string Answer { get; set; }
 
+        [Column("category")]
+        public string Category { get; set; }
+
         public string GenerateHint()
         {
             if (String.IsNullOrWhiteSpace(this.Answer))

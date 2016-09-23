@@ -60,19 +60,35 @@ namespace AnotherTriviaSlackBot.Handler
                         case "help":
                             sendMessage(
                                 $"Don't you think I'm smart bot with {TriviaDB.GetQuestionCount()} questions and understand these commands?\n\n" +
-                                "start: Starts a new trivia round.\n" +
+                                "start <category>: Starts a new trivia round for the specified category, if no category is specified the default category is selected.\n" +
                                 "stop: Stops the current trivia\n" +
+                                "categories: List all available categories\n" +
                                 "badquestion X: Mark question X (number) as a bad question, so it will not be asked again\n" +
                                 $"\nExample: <@{botId}> start"
                             );
                             break;
 
                         case "start":
-                            triviaHandler.Start();
+                            string categoryName = null;
+                            if (parameters.Length > 0)
+                                categoryName = parameters[0];
+
+                            triviaHandler.Start(categoryName);
                             break;
 
                         case "stop":
                             triviaHandler.Cancel();
+                            break;
+
+                        case "categories":
+                            var categories = TriviaDB.GetCategories();
+
+                            StringBuilder categoriesString = new StringBuilder();
+                            categoriesString.Append($"When I was look I found the following {categories.Count} categories for you to choose from:");
+                            foreach(var category in categories)
+                                categoriesString.Append($"\n{category.Key} ({category.Value} questions)");
+
+                            sendMessage(categoriesString.ToString());
                             break;
 
                         case "badquestion":
