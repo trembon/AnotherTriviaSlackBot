@@ -11,25 +11,32 @@ using System.Threading.Tasks;
 
 namespace AnotherTriviaSlackBot
 {
-    public class Program : ServiceBase
+    public class Program
     {
-        public const string SERVICE_NAME = "Trivia - Slack Bot";
-        private static readonly Logger log = LogManager.GetLogger("Service");
+        private static readonly Logger log = LogManager.GetLogger("Program");
 
-        private static Program service;
-        private TriviaService triviaService;
+        private static Service service;
 
         static void Main(string[] args)
         {
             AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;
 
             // create the new base service
-            service = new Program();
+            service = new Service();
 
-            // check mode on the application, cmd or service
+            // check mode on the application
             if (Environment.UserInteractive)
             {
-                HandleConsoleInput(args);
+                if (args != null && args.Length >= 1 && args[0] == "-console")
+                {
+                    // run the service as a console app, if -console argument is specified
+                    RunAsConsole(args.Skip(1).ToArray());
+                }
+                else
+                {
+                    // handle input of the user
+                    HandleConsoleInput(args);
+                }
             }
             else
             {
@@ -40,35 +47,32 @@ namespace AnotherTriviaSlackBot
 
         private static void HandleConsoleInput(string[] args)
         {
-            bool keepAskingForInput = true;
-            while (keepAskingForInput)
+            while (true)
             {
-                Console.Clear();
-
                 bool isInstalled = false;
-                ServiceController windowsService = new ServiceController(SERVICE_NAME);
-                try { isInstalled = windowsService.DisplayName == SERVICE_NAME; } catch { }
+                ServiceController windowsService = new ServiceController(Service.SERVICE_NAME);
+                try { isInstalled = windowsService.DisplayName == Service.SERVICE_NAME; } catch { }
 
                 Console.WriteLine("Select your choice:");
-                Console.WriteLine($"[s] Start '{SERVICE_NAME}' as a console application.");
+                Console.WriteLine($"[s] Start '{Service.SERVICE_NAME}' as a console application.");
                 Console.WriteLine("");
 
                 if (isInstalled)
                 {
-                    Console.WriteLine($"[u] Uninstall the '{SERVICE_NAME}' service.");
+                    Console.WriteLine($"[u] Uninstall the '{Service.SERVICE_NAME}' service.");
                     if (windowsService.Status == ServiceControllerStatus.Running)
                     {
-                        Console.WriteLine($"[2] Stop the '{SERVICE_NAME}' service.");
-                        Console.WriteLine($"[3] Restart the '{SERVICE_NAME}' service.");
+                        Console.WriteLine($"[2] Stop the '{Service.SERVICE_NAME}' service.");
+                        Console.WriteLine($"[3] Restart the '{Service.SERVICE_NAME}' service.");
                     }
                     else
                     {
-                        Console.WriteLine($"[1] Start the '{SERVICE_NAME}' service.");
+                        Console.WriteLine($"[1] Start the '{Service.SERVICE_NAME}' service.");
                     }
                 }
                 else
                 {
-                    Console.WriteLine($"[i] Install '{SERVICE_NAME}' as a windows service.");
+                    Console.WriteLine($"[i] Install '{Service.SERVICE_NAME}' as a windows service.");
                 }
 
                 Console.WriteLine("");
@@ -84,117 +88,125 @@ namespace AnotherTriviaSlackBot
                 switch (input.KeyChar)
                 {
                     case 's':
-                        Console.Clear();
-                        keepAskingForInput = false;
-
-                        // start the service as a console application
-                        service.OnStart(args);
-                        Console.WriteLine("Press any key to stop the program.");
-                        Console.Read();
-                        service.OnStop();
+                        RunAsConsole(args);
                         break;
 
                     case 'q':
-                        keepAskingForInput = false;
+                        Environment.Exit(0);
                         break;
 
                     case 'i':
                         Console.WriteLine("Installing the service.");
 
-                        var iOriginal = Console.Out;
-                        try
+                        HideOutput(() =>
                         {
-                            Console.SetOut(TextWriter.Null);
-
                             ManagedInstallerClass.InstallHelper(new string[] { Assembly.GetExecutingAssembly().Location });
-
-                            Console.SetOut(iOriginal);
-                            Console.WriteLine("Installing the service - complete.");
-                        }
-                        catch
-                        {
-                            Console.SetOut(iOriginal);
-                            Console.WriteLine("An error occured, verify that you are running as an administrator");
-                        }
+                        },
+                        () => Console.WriteLine("Installing the service - complete."),
+                        () => Console.WriteLine("An error occured, verify that you are running as an administrator"));
                         break;
 
                     case 'u':
                         Console.WriteLine("Uninstalling the service.");
 
-                        var uOriginal = Console.Out;
-                        try
+                        HideOutput(() =>
                         {
-                            Console.SetOut(TextWriter.Null);
-
                             ManagedInstallerClass.InstallHelper(new string[] { "/u", Assembly.GetExecutingAssembly().Location });
-
-                            Console.SetOut(uOriginal);
-                            Console.WriteLine("Uninstalling the service - complete.");
-                        }
-                        catch
-                        {
-                            Console.SetOut(uOriginal);
-                            Console.WriteLine("An error occured, verify that you are running as an administrator");
-                        }
+                        },
+                        () => Console.WriteLine("Uninstalling the service - complete."),
+                        () => Console.WriteLine("An error occured, verify that you are running as an administrator"));
                         break;
 
                     case '1':
-                        try
-                        {
-                            Console.WriteLine("Starting the service.");
-                            windowsService.Start();
-                            windowsService.WaitForStatus(ServiceControllerStatus.Running);
-                            Console.WriteLine("The service has now started.");
-                        }
-                        catch
-                        {
-                            Console.WriteLine("An error occured, verify that you are running as an administrator");
-                        }
+                        StartService(windowsService);
                         break;
 
                     case '2':
-                        try
-                        {
-                            Console.WriteLine("Stopping the service.");
-                            windowsService.Stop();
-                            windowsService.WaitForStatus(ServiceControllerStatus.Stopped);
-                            Console.WriteLine("The service has now stopped.");
-                        }
-                        catch
-                        {
-                            Console.WriteLine("An error occured, verify that you are running as an administrator");
-                        }
+                        StopService(windowsService);
                         break;
 
                     case '3':
-                        try
-                        {
-                            Console.WriteLine("Stopping the service.");
-                            windowsService.Stop();
-                            windowsService.WaitForStatus(ServiceControllerStatus.Stopped);
-                            Console.WriteLine("Startig the service.");
-                            windowsService.Start();
-                            windowsService.WaitForStatus(ServiceControllerStatus.Running);
-                            Console.WriteLine("The service has now restarted.");
-                        }
-                        catch
-                        {
-                            Console.WriteLine("An error occured, verify that you are running as an administrator");
-                        }
+                        StopService(windowsService);
+                        StartService(windowsService);
                         break;
 
                     default:
                         Console.WriteLine("Invalid input.");
                         break;
                 }
-
-                if (keepAskingForInput)
-                {
-                    Console.WriteLine("");
-                    Console.WriteLine("Press any key to continue.");
-                    Console.ReadKey();
-                }
+                
+                Console.WriteLine("");
+                Console.WriteLine("Press any key to continue.");
+                Console.ReadKey();
+                Console.Clear();
             }
+        }
+
+        private static void HideOutput(Action action, Action onSuccess = null, Action onError = null)
+        {
+            var originalOutput = Console.Out;
+            try
+            {
+                Console.SetOut(TextWriter.Null);
+                action();
+                Console.SetOut(originalOutput);
+
+                onSuccess?.Invoke();
+            }
+            catch
+            {
+                Console.SetOut(originalOutput);
+                onError?.Invoke();
+            }
+        }
+
+        private static void StartService(ServiceController service)
+        {
+            try
+            {
+                Console.WriteLine("Starting the service.");
+
+                service.Start();
+                service.WaitForStatus(ServiceControllerStatus.Running);
+
+                Console.WriteLine("The service has now started.");
+            }
+            catch
+            {
+                Console.WriteLine("An error occured, verify that you are running as an administrator");
+            }
+        }
+
+        private static void StopService(ServiceController service)
+        {
+            try
+            {
+                Console.WriteLine("Stopping the service.");
+
+                service.Stop();
+                service.WaitForStatus(ServiceControllerStatus.Stopped);
+
+                Console.WriteLine("The service has now stopped.");
+            }
+            catch
+            {
+                Console.WriteLine("An error occured, verify that you are running as an administrator");
+            }
+        }
+
+        private static void RunAsConsole(string[] args)
+        {
+            // clear the console output, just in case
+            Console.Clear();
+
+            // start the service as a console application
+            service.Start(args);
+            Console.WriteLine("Press any key to stop the program.");
+            Console.Read();
+            service.Stop();
+
+            // exit the application when done
+            Environment.Exit(0);
         }
 
         /// <summary>
@@ -205,56 +217,6 @@ namespace AnotherTriviaSlackBot
         private static void CurrentDomain_UnhandledException(object sender, UnhandledExceptionEventArgs e)
         {
             log.Error(e.ExceptionObject as Exception, "Uncought exception.");
-        }
-
-        /// <summary>
-        /// Initializes a new instance of the <see cref="Program"/> class.
-        /// </summary>
-        public Program()
-        {
-            ServiceName = SERVICE_NAME;
-        }
-
-        /// <summary>
-        /// When implemented in a derived class, executes when a Start command is sent to the service by the Service Control Manager (SCM) or when the operating system starts (for a service that starts automatically). Specifies actions to take when the service starts.
-        /// </summary>
-        /// <param name="args">Data passed by the start command.</param>
-        protected override void OnStart(string[] args)
-        {
-            // log
-            log.Info("Service is starting.");
-
-            // clear the old service
-            if (triviaService != null)
-                triviaService.Stop();
-
-            // create a new service
-            triviaService = new TriviaService();
-
-            // start the service
-            triviaService.Start();
-
-            // log
-            log.Info("Service has started.");
-        }
-
-        /// <summary>
-        /// When implemented in a derived class, executes when a Stop command is sent to the service by the Service Control Manager (SCM). Specifies actions to take when a service stops running.
-        /// </summary>
-        protected override void OnStop()
-        {
-            // log
-            log.Info("Service is stopping.");
-
-            // stop and empty the service
-            if (triviaService != null)
-            {
-                triviaService.Stop();
-                triviaService = null;
-            }
-
-            // log
-            log.Info("Service has stopped.");
         }
     }
 }

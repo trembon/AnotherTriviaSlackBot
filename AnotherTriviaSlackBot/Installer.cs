@@ -28,8 +28,8 @@ namespace AnotherTriviaSlackBot
             // create the service installer
             service = new ServiceInstaller();
             service.StartType = ServiceStartMode.Automatic;
-            service.ServiceName = Program.SERVICE_NAME;
-            service.Description = "A Trivia Slack bot that will keep your Slack friends entertained!";
+            service.ServiceName = Service.SERVICE_NAME;
+            service.Description = Service.SERVICE_DESC;
 
             // install the process and the service
             Installers.Add(process);
