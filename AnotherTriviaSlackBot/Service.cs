@@ -42,9 +42,6 @@ namespace AnotherTriviaSlackBot
 
             client = new SlackSocketClient(configuration.SlackAuthToken);
             client.OnMessageReceived += Client_OnMessageReceived;
-
-            DAL.TriviaDB.GetQuestionCount();
-            DAL.TriviaDB.GetCategories();
         }
 
         #region Service methods
@@ -63,6 +60,10 @@ namespace AnotherTriviaSlackBot
         /// <param name="args">Data passed by the start command.</param>
         protected override void OnStart(string[] args)
         {
+            // preload database info on start
+            DAL.TriviaDB.GetQuestionCount();
+            DAL.TriviaDB.GetCategories();
+
             // connect to the slack server
             Connect();
 

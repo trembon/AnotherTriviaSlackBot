@@ -1,6 +1,8 @@
 ﻿{
   "SlackAuthToken": "xoxb-your-bot-key",
   "ChannelName": "ChannelName",
+  "AnnounceToChannelBeforeStart": true,
+  "StartDelaySecondsAfterAnnounce": 5,
   "QuestionsPerRound": 10,
   "ShowHintAfterSeconds": 10,
   "ShowAnswerAfterSeconds": 20,

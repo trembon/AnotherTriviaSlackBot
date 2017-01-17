@@ -9,8 +9,6 @@ namespace AnotherTriviaSlackBot.Handler
 {
     public class MessageHandler
     {
-        private object handleLock = new object();
-
         private string botId;
         private TriviaHandler triviaHandler;
         private Action<string> sendMessage;
@@ -24,7 +22,7 @@ namespace AnotherTriviaSlackBot.Handler
 
         public void SetBotID(string botId)
         {
-            lock (handleLock)
+            lock (this.triviaHandler.MainLock)
             {
                 this.botId = botId;
             }
@@ -32,7 +30,7 @@ namespace AnotherTriviaSlackBot.Handler
 
         public void HandleMessage(string message, string userId)
         {
-            lock (handleLock)
+            lock (this.triviaHandler.MainLock)
             {
                 if (botId == null)
                     return;
@@ -84,7 +82,7 @@ namespace AnotherTriviaSlackBot.Handler
                             var categories = TriviaDB.GetCategories();
 
                             StringBuilder categoriesString = new StringBuilder();
-                            categoriesString.Append($"When I was look I found the following {categories.Count} categories for you to choose from:");
+                            categoriesString.Append($"When I was looking I found the following {categories.Count} categories for you to choose from:");
                             foreach(var category in categories)
                                 categoriesString.Append($"\n{category.Key} ({category.Value} questions)");
 

@@ -15,6 +15,8 @@ namespace AnotherTriviaSlackBot.Handler
 
         public bool IsActive { get; set; }
 
+        public object MainLock { get; } = new object();
+
         public int CurrentQuestionCount
         {
             get { return currentQuestion + 1; }
@@ -30,105 +32,122 @@ namespace AnotherTriviaSlackBot.Handler
 
         public void Start(string category)
         {
-            if (IsActive)
-                return;
-
-            if (String.IsNullOrWhiteSpace(category))
-                category = configuration.DefaultCategory;
-
-            var categories = TriviaDB.GetCategories();
-            if (!categories.ContainsKey(category))
+            lock (MainLock)
             {
-                sendMessage($"Seriously? The category '{category}' doesn't exist, think before you write!");
-                return;
+                if (IsActive)
+                    return;
+
+                if (String.IsNullOrWhiteSpace(category))
+                    category = configuration.DefaultCategory;
+
+                var categories = TriviaDB.GetCategories();
+                if (!categories.ContainsKey(category))
+                {
+                    sendMessage($"Seriously? The category '{category}' doesn't exist, think before you write!");
+                    return;
+                }
+
+                int startDelaySeconds = 1;
+                string baseStartMessage = $"A new trivia for '{category}' will start in a moment, just gonna find {configuration.QuestionsPerRound} questions!";
+                if (configuration.AnnounceToChannelBeforeStart)
+                {
+                    startDelaySeconds = configuration.StartDelaySecondsAfterAnnounce;
+                    sendMessage($"<!channel>: {baseStartMessage}");
+                }
+                else
+                {
+                    sendMessage(baseStartMessage);
+                }
+
+                currentQuestion = -1;
+                questions = TriviaDB.GetRandomQuestions(category, configuration.QuestionsPerRound).Select(q => new CurrentTriviaQuestion(q)).ToList();
+                
+                Task.Delay(startDelaySeconds * 1000).ContinueWith(x => ShowQuestion());
+
+                IsActive = true;
             }
-
-            sendMessage($"A new trivia for '{category}' will start in a moment, just gonna find {configuration.QuestionsPerRound} questions!");
-
-            currentQuestion = -1;
-            questions = TriviaDB.GetRandomQuestions(category, configuration.QuestionsPerRound).Select(q => new CurrentTriviaQuestion(q)).ToList();
-
-            Task.Delay(1000).ContinueWith(x => ShowQuestion());
-
-            IsActive = true;
         }
 
         public void Cancel()
         {
-            if (!IsActive)
+            lock (MainLock)
             {
-                sendMessage("There isn't an active trivia to stop, stupid");
-                return;
-            }
-            
-            questions.ForEach(q => q.IsAnswered = true);
+                if (!IsActive)
+                {
+                    sendMessage("There isn't an active trivia to stop, stupid");
+                    return;
+                }
 
-            sendMessage("Someone is boring... stopping current trivia");
-            IsActive = false;
+                questions.ForEach(q => q.IsAnswered = true);
+
+                sendMessage("Someone is boring... stopping current trivia");
+                IsActive = false;
+            }
         }
 
         private List<CurrentTriviaQuestion> questions;
         private int currentQuestion;
 
-        private object questionsLock = new object();
-
         private void ShowQuestion()
         {
-            currentQuestion++;
-
-            if (currentQuestion < questions.Count)
+            lock (MainLock)
             {
-                if (!IsActive)
-                    return;
+                currentQuestion++;
 
-                var question = questions[currentQuestion];
-                sendMessage($"*Question {currentQuestion + 1}*: {question.Question.Text}");
-
-                Task.Delay(configuration.ShowHintAfterSeconds * 1000).ContinueWith(x => ShowHelp(question));
-                Task.Delay(configuration.ShowAnswerAfterSeconds * 1000).ContinueWith(x => ShowAnswer(question));
-            }
-            else
-            {
-                Dictionary<string, int> statsAfterRound = questions.Where(x => x.AnswererUserID != null).GroupBy(x => x.AnswererUserID).OrderByDescending(x => x.Count()).ToDictionary(k => k.Key, v => v.Count());
-
-                TriviaDB.UpdatePlayerStats(statsAfterRound);
-                var top5 = TriviaDB.GetTopFiveUsers();
-
-                StringBuilder resultMsg = new StringBuilder();
-                resultMsg.Append($"This trivia round is now done, the results are the following:\n");
-                if (statsAfterRound.Count > 0)
+                if (currentQuestion < questions.Count)
                 {
-                    resultMsg.Append(String.Join(", ", statsAfterRound.Select(x => $"<@{x.Key}>: {x.Value}")));
+                    if (!IsActive)
+                        return;
+
+                    var question = questions[currentQuestion];
+                    sendMessage($"*Question {currentQuestion + 1}*: {question.Question.Text}");
+
+                    Task.Delay(configuration.ShowHintAfterSeconds * 1000).ContinueWith(x => ShowHelp(question));
+                    Task.Delay(configuration.ShowAnswerAfterSeconds * 1000).ContinueWith(x => ShowAnswer(question));
                 }
                 else
                 {
-                    resultMsg.Append("_No users scored this round, better luck next time!_");
-                }
+                    Dictionary<string, int> statsAfterRound = questions.Where(x => x.AnswererUserID != null).GroupBy(x => x.AnswererUserID).OrderByDescending(x => x.Count()).ToDictionary(k => k.Key, v => v.Count());
 
-                resultMsg.Append("\n\n");
+                    TriviaDB.UpdatePlayerStats(statsAfterRound);
+                    var top5 = TriviaDB.GetTopFiveUsers();
 
-                resultMsg.Append($"Top 5 total:\n");
-                if (top5.Count > 0)
-                {
-                    resultMsg.Append(String.Join(", ", top5.Select(x => $"<@{x.UserID}>: {x.Score}")));
-                }
-                else
-                {
-                    resultMsg.Append("_No users have scored yet._");
-                }
+                    StringBuilder resultMsg = new StringBuilder();
+                    resultMsg.Append($"This trivia round is now done, the results are the following:\n");
+                    if (statsAfterRound.Count > 0)
+                    {
+                        resultMsg.Append(String.Join(", ", statsAfterRound.Select(x => $"<@{x.Key}>: {x.Value}")));
+                    }
+                    else
+                    {
+                        resultMsg.Append("_No users scored this round, better luck next time!_");
+                    }
 
-                sendMessage(resultMsg.ToString());
-                IsActive = false;
+                    resultMsg.Append("\n\n");
+
+                    resultMsg.Append($"Top 5 total:\n");
+                    if (top5.Count > 0)
+                    {
+                        resultMsg.Append(String.Join(", ", top5.Select(x => $"<@{x.UserID}>: {x.Score}")));
+                    }
+                    else
+                    {
+                        resultMsg.Append("_No users have scored yet._");
+                    }
+
+                    sendMessage(resultMsg.ToString());
+                    IsActive = false;
+                }
             }
         }
 
         public void ReceiveAnswer(string answer, string userId)
         {
-            if (!IsActive)
+            lock (MainLock)
+            {
+                if (!IsActive)
                 return;
 
-            lock (questionsLock)
-            {
                 var question = questions[currentQuestion];
                 if (!question.IsAnswered && question.Question.Answer.Equals(answer, StringComparison.InvariantCultureIgnoreCase))
                 {
@@ -149,11 +168,11 @@ namespace AnotherTriviaSlackBot.Handler
 
         private void ShowAnswer(CurrentTriviaQuestion currentQuestion)
         {
-            if (!IsActive)
-                return;
-            
-            lock (questionsLock)
+            lock (MainLock)
             {
+                if (!IsActive)
+                    return;
+
                 if (!currentQuestion.IsAnswered)
                 {
                     sendMessage($"No correct answer, what I was looking for was '{currentQuestion.Question.Answer}'");
@@ -167,11 +186,11 @@ namespace AnotherTriviaSlackBot.Handler
 
         private void ShowHelp(CurrentTriviaQuestion currentQuestion)
         {
-            if (!IsActive)
-                return;
-            
-            lock (questionsLock)
+            lock (MainLock)
             {
+                if (!IsActive)
+                    return;
+
                 if (!currentQuestion.IsAnswered)
                 {
                     sendMessage($"*Hint*: {currentQuestion.Question.GenerateHint()}");

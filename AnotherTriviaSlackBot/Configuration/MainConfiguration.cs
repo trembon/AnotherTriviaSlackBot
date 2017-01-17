@@ -14,6 +14,10 @@ namespace AnotherTriviaSlackBot.Configuration
 
         public string ChannelName { get; set; }
 
+        public bool AnnounceToChannelBeforeStart { get; set; }
+
+        public int StartDelaySecondsAfterAnnounce { get; set; }
+
         public int QuestionsPerRound { get; set; }
 
         public int ShowHintAfterSeconds { get; set; }
