@@ -14,3 +14,41 @@ Can be installed as a Windows service with the [InstallUtil](https://msdn.micros
   "DefaultCategory": "general" - the default category to start if the command @botname start is used
 }
 ```
+
+## Installation
+
+### Step 1 - Generating the SlackAuthToken
+
+1. Open up your slack client.
+
+
+2. Go to the "Apps & Integration" for the slack team.
+
+
+3. Search for the app named "Bots".  
+    The description of the app should be "Run code that listens and posts to your Slack team just as a user would.".
+    
+    
+4. Click on "Add Configuration".
+
+
+5. Choose what the bot should be called, then click "Add bot integration". Example: triviabot  
+    Note: This name will be used for commands, like @triviabot start.
+
+
+6. You can now change how the bot will appear in slack to the users. When done, click on "Save Integration".
+
+
+7. Copy the value in the field "API Token" and place it in your configuration as the "SlackAuthToken".
+
+
+### Step 2 - Setting up Slack
+
+1. Create a channel for trivia, like "Trivia".
+
+
+2. Enter the channel you just created.
+
+
+3. Select the option to invite a team member to the channel and select the trivia bot.  
+    The trivia bot will appear with the name what you choose to call it when creating the bot integration (like triviabot) in the list of team member.
