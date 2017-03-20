@@ -1,4 +1,5 @@
-﻿using NLog;
+﻿using AnotherTriviaSlackBot.Configuration;
+using NLog;
 using System;
 using System.Collections.Generic;
 using System.Configuration.Install;
@@ -21,13 +22,19 @@ namespace AnotherTriviaSlackBot
         {
             AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;
 
+            // check if a custom settings.json file should be used
+            if (args != null)
+            {
+                MainConfiguration.SettingsFile = args.Where(arg => arg.StartsWith("-config=", StringComparison.OrdinalIgnoreCase)).Select(c => c.Substring(8)).FirstOrDefault();
+            }
+
             // create the new base service
             service = new Service();
 
             // check mode on the application
             if (Environment.UserInteractive)
             {
-                if (args != null && args.Length >= 1 && args[0] == "-console")
+                if (args != null && args.Any(arg => arg.Equals("-console", StringComparison.OrdinalIgnoreCase)))
                 {
                     // run the service as a console app, if -console argument is specified
                     RunAsConsole(args.Skip(1).ToArray());

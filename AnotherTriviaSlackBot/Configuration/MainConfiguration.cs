@@ -26,9 +26,24 @@ namespace AnotherTriviaSlackBot.Configuration
 
         public string DefaultCategory { get; set; }
 
+        public static string SettingsFile { get; set; }
+
         public static MainConfiguration Load()
         {
             string configPath = Path.Combine(GetDataDirectory(), "settings.json");
+
+            if (!string.IsNullOrWhiteSpace(SettingsFile))
+            {
+                if (File.Exists(SettingsFile))
+                {
+                    configPath = SettingsFile;
+                }
+                else
+                {
+                    configPath = Path.Combine(GetDataDirectory(), SettingsFile);
+                }
+            }
+            
             if (!File.Exists(configPath))
                 throw new FileNotFoundException("Configuration file not found", configPath);
 
