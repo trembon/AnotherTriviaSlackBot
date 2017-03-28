@@ -14,6 +14,12 @@ namespace AnotherTriviaSlackBot.DAL
 {
     public class QuestionDBContext : DbContext
     {
+        /// <summary>
+        /// Gets the questions database set.
+        /// </summary>
+        /// <value>
+        /// The questions.
+        /// </value>
         public DbSet<Question> Questions { get; set; }
     }
 }

@@ -11,10 +11,22 @@ namespace AnotherTriviaSlackBot.Entities
     [Table("bad_questions")]
     public class BadQuestion
     {
+        /// <summary>
+        /// Gets or sets the question identifier.
+        /// </summary>
+        /// <value>
+        /// The question identifier.
+        /// </value>
         [Key]
         [Column("questions_id")]
         public string QuestionID { get; set; }
 
+        /// <summary>
+        /// Gets or sets the user identifier.
+        /// </summary>
+        /// <value>
+        /// The user identifier.
+        /// </value>
         [Column("user_id")]
         public string UserID { get; set; }
     }

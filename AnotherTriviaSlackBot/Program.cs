@@ -14,26 +14,30 @@ namespace AnotherTriviaSlackBot
 {
     public class Program
     {
-        private static readonly Logger log = LogManager.GetLogger("Program");
+        private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
         private static Service service;
 
+        /// <summary>
+        /// Start of the application.
+        /// </summary>
+        /// <param name="args">The arguments.</param>
         static void Main(string[] args)
         {
+            // set up unhandled loggin
             AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;
 
-            // check if a custom settings.json file should be used
+            // check if a custom settings.json file should be used from the arguments
             if (args != null)
-            {
                 MainConfiguration.SettingsFile = args.Where(arg => arg.StartsWith("-config=", StringComparison.OrdinalIgnoreCase)).Select(c => c.Substring(8)).FirstOrDefault();
-            }
 
             // create the new base service
             service = new Service();
 
-            // check mode on the application
+            // check mode on the application (windows service or console application)
             if (Environment.UserInteractive)
             {
+                // check if the application should be started directly or show the 'menu' to the user
                 if (args != null && args.Any(arg => arg.Equals("-console", StringComparison.OrdinalIgnoreCase)))
                 {
                     // run the service as a console app, if -console argument is specified
@@ -52,6 +56,38 @@ namespace AnotherTriviaSlackBot
             }
         }
 
+        /// <summary>
+        /// Starts the service as a console application.
+        /// </summary>
+        /// <param name="args">The arguments.</param>
+        private static void RunAsConsole(string[] args)
+        {
+            // clear the console output, just in case
+            Console.Clear();
+
+            // start the service as a console application
+            service.Start(args);
+            Console.WriteLine("Press <ENTER> to stop the program.");
+
+            // accept to send message from the console, if empty message, close the application
+            string message = "";
+            do
+            {
+                message = Console.ReadLine();
+                service.SendMessage(message);
+            } while (!string.IsNullOrWhiteSpace(message));
+
+            service.Stop();
+
+            // exit the application when done
+            Environment.Exit(0);
+        }
+
+        #region Console 'menu' handlers
+        /// <summary>
+        /// Handles the console input for the 'menu'.
+        /// </summary>
+        /// <param name="args">The arguments.</param>
         private static void HandleConsoleInput(string[] args)
         {
             while (true)
@@ -149,72 +185,87 @@ namespace AnotherTriviaSlackBot
             }
         }
 
+        /// <summary>
+        /// Hides the output to the console.
+        /// </summary>
+        /// <param name="action">The action.</param>
+        /// <param name="onSuccess">The on success.</param>
+        /// <param name="onError">The on error.</param>
         private static void HideOutput(Action action, Action onSuccess = null, Action onError = null)
         {
+            // save the original output stream
             var originalOutput = Console.Out;
+
             try
             {
+                // set an empty out writer for the console, so no info should be shown
                 Console.SetOut(TextWriter.Null);
+
+                // perform the specified action
                 action();
+
+                // restore the original output writer
                 Console.SetOut(originalOutput);
 
+                // on success, trigger success action
                 onSuccess?.Invoke();
             }
-            catch
+            catch(Exception ex)
             {
+                // if anything fails, log, restore output stream and trigger error method
+                logger.Error(ex, "Failed to perform action in HideOutput method.");
                 Console.SetOut(originalOutput);
                 onError?.Invoke();
             }
         }
 
+        /// <summary>
+        /// Starts the windows service.
+        /// </summary>
+        /// <param name="service">The service.</param>
         private static void StartService(ServiceController service)
         {
             try
             {
                 Console.WriteLine("Starting the service.");
 
+                // starts the service and waits for it to be running
                 service.Start();
                 service.WaitForStatus(ServiceControllerStatus.Running);
 
                 Console.WriteLine("The service has now started.");
             }
-            catch
+            catch (Exception ex)
             {
+                logger.Error(ex, $"Failed to start the windows service '{Service.SERVICE_NAME}'.");
                 Console.WriteLine("An error occured, verify that you are running as an administrator");
             }
         }
 
+        /// <summary>
+        /// Stops the windows service.
+        /// </summary>
+        /// <param name="service">The service.</param>
         private static void StopService(ServiceController service)
         {
             try
             {
                 Console.WriteLine("Stopping the service.");
 
+                // stops the service and waits to be completly stopped
                 service.Stop();
                 service.WaitForStatus(ServiceControllerStatus.Stopped);
 
                 Console.WriteLine("The service has now stopped.");
             }
-            catch
+            catch (Exception ex)
             {
+                logger.Error(ex, $"Failed to stop the windows service '{Service.SERVICE_NAME}'.");
                 Console.WriteLine("An error occured, verify that you are running as an administrator");
             }
         }
+        #endregion
 
-        private static void RunAsConsole(string[] args)
-        {
-            // clear the console output, just in case
-            Console.Clear();
-
-            // start the service as a console application
-            service.Start(args);
-            Console.WriteLine("Press any key to stop the program.");
-            Console.Read();
-            service.Stop();
-
-            // exit the application when done
-            Environment.Exit(0);
-        }
 
         /// <summary>
         /// Handles the UnhandledException event of the CurrentDomain control.
@@ -223,7 +274,7 @@ namespace AnotherTriviaSlackBot
         /// <param name="e">The <see cref="UnhandledExceptionEventArgs"/> instance containing the event data.</param>
         private static void CurrentDomain_UnhandledException(object sender, UnhandledExceptionEventArgs e)
         {
-            log.Error(e.ExceptionObject as Exception, "Uncought exception.");
+            logger.Error(e.ExceptionObject as Exception, "Uncought exception.");
         }
     }
 }

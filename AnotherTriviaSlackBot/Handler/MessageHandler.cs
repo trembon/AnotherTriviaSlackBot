@@ -13,6 +13,11 @@ namespace AnotherTriviaSlackBot.Handler
         private TriviaHandler triviaHandler;
         private Action<string> sendMessage;
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="MessageHandler"/> class.
+        /// </summary>
+        /// <param name="triviaHandler">The trivia handler.</param>
+        /// <param name="sendMessage">The send message.</param>
         public MessageHandler(TriviaHandler triviaHandler, Action<string> sendMessage)
         {
             this.botId = null;
@@ -20,6 +25,10 @@ namespace AnotherTriviaSlackBot.Handler
             this.sendMessage = sendMessage;
         }
 
+        /// <summary>
+        /// Sets the bot identifier.
+        /// </summary>
+        /// <param name="botId">The bot identifier.</param>
         public void SetBotID(string botId)
         {
             lock (this.triviaHandler.MainLock)
@@ -28,6 +37,11 @@ namespace AnotherTriviaSlackBot.Handler
             }
         }
 
+        /// <summary>
+        /// Handles incomming messages from slack.
+        /// </summary>
+        /// <param name="message">The message.</param>
+        /// <param name="userId">The user identifier.</param>
         public void HandleMessage(string message, string userId)
         {
             lock (this.triviaHandler.MainLock)
@@ -35,11 +49,14 @@ namespace AnotherTriviaSlackBot.Handler
                 if (botId == null)
                     return;
 
+                // trim the message and check if the message starts with the trivia bot as "tagged" like @triviabot
                 message = message.Trim();
                 if (message.StartsWith($"<@{botId}>"))
                 {
+                    // parse out what command is sent to the bot
                     string cmd = message.Substring($"<@{botId}>".Length).Trim().ToLower();
 
+                    // check if there are any parameters to the command
                     string[] parameters = new string[0];
                     if(cmd.Contains(' '))
                     {
@@ -51,10 +68,12 @@ namespace AnotherTriviaSlackBot.Handler
                         
                     switch (cmd)
                     {
+                        // default text to show the help command
                         case "":
                             sendMessage($"Yes? Just.. just.. here, do this instead: <@{botId}> help");
                             break;
 
+                        // the help, shows what commands are available
                         case "help":
                             sendMessage(
                                 $"Don't you think I'm smart bot with {TriviaDB.GetQuestionCount()} questions and understand these commands?\n\n" +
@@ -65,7 +84,8 @@ namespace AnotherTriviaSlackBot.Handler
                                 $"\nExample: <@{botId}> start"
                             );
                             break;
-
+                        
+                        // starts a new trivia
                         case "start":
                             string categoryName = null;
                             if (parameters.Length > 0)
@@ -73,11 +93,13 @@ namespace AnotherTriviaSlackBot.Handler
 
                             triviaHandler.Start(categoryName);
                             break;
-
+                        
+                        // stops an ongoing trivia
                         case "stop":
                             triviaHandler.Cancel();
                             break;
-
+                        
+                        // shows all available categories
                         case "categories":
                             var categories = TriviaDB.GetCategories();
 
@@ -89,6 +111,7 @@ namespace AnotherTriviaSlackBot.Handler
                             sendMessage(categoriesString.ToString());
                             break;
 
+                        // marks a question as bad
                         case "badquestion":
                             if (parameters.Length >= 1)
                             {
@@ -109,7 +132,8 @@ namespace AnotherTriviaSlackBot.Handler
                                 sendMessage("Ain't you missing something? Like.. the question number?");
                             }
                             break;
-
+                        
+                        // default that it isnt a known command
                         default:
                             sendMessage("Do I look like someone that understand that jibberish?");
                             break;
@@ -117,6 +141,7 @@ namespace AnotherTriviaSlackBot.Handler
                 }
                 else
                 {
+                    // if message wasnt a command, send it to the trivia handler as an answer
                     triviaHandler.ReceiveAnswer(message, userId);
                 }
             }
