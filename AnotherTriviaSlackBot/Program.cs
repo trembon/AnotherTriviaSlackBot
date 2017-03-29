@@ -24,7 +24,7 @@ namespace AnotherTriviaSlackBot
         /// <param name="args">The arguments.</param>
         static void Main(string[] args)
         {
-            // set up unhandled loggin
+            // set up unhandled logging
             AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;
 
             // check if a custom settings.json file should be used from the arguments
