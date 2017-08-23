@@ -41,9 +41,6 @@ namespace AnotherTriviaSlackBot
 
             triviaHandler = new TriviaHandler(configuration, SendMessage);
             messageHandler = new MessageHandler(triviaHandler, SendMessage);
-
-            client = new SlackSocketClient(configuration.SlackAuthToken);
-            client.OnMessageReceived += Client_OnMessageReceived;
         }
 
         #region Service methods
@@ -99,6 +96,12 @@ namespace AnotherTriviaSlackBot
         /// </summary>
         private void Connect()
         {
+            if (client == null)
+            {
+                client = new SlackSocketClient(configuration.SlackAuthToken);
+                client.OnMessageReceived += Client_OnMessageReceived;
+            }
+
             client.Connect((connected) =>
             {
                 if (connected.ok)
@@ -128,6 +131,9 @@ namespace AnotherTriviaSlackBot
         /// <param name="message">The message.</param>
         public void SendMessage(string message)
         {
+            if (client == null)
+                return;
+
             if (string.IsNullOrWhiteSpace(message))
                 return;
 
@@ -152,9 +158,14 @@ namespace AnotherTriviaSlackBot
         private void Timer_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
         {
             // check if the client is connected to slack
-            if (!client.IsConnected)
+            if (client != null && !client.IsConnected)
             {
                 logger.Info("Client is not connected, trying to reconnect");
+
+                // clean up old client
+                client.OnMessageReceived -= Client_OnMessageReceived;
+                client.CloseSocket();
+                client = null;
 
                 // if the client is not connect, try to reconnect it
                 Connect();
